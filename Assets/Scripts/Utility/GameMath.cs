@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.Animations;
 
@@ -84,5 +85,30 @@ namespace Game.Utility
         }
 
 
+        public static T[] Append<T>(T[] array, T value)
+        {
+            T[] newArray = new T[array.Length + 1];
+            for (int i = 0; i < array.Length; i++)
+            {
+                newArray[i] = array[i];
+            }
+            newArray[array.Length] = value;
+            return newArray;
+        }
+
+        public static Vector3 AverageVector(Vector3[] vecs) 
+        {
+            float x = 0f, y = 0f, z = 0f;
+            foreach (Vector3 v in vecs) 
+            {
+                x += v.x;
+                y += v.y;
+                z += v.z;
+            }
+            Vector3 total = new Vector3(x, y, z);
+            return total / vecs.Length;  
+        }
+
     }
+
 }

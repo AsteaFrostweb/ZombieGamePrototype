@@ -26,20 +26,25 @@ public class PlayerMovement : MonoBehaviour
 
     [Header("Outputs")]
     [SerializeField]
+    private float speed;
+    [SerializeField]
     private bool isGrounded;
     [SerializeField]
     private bool canJump;
     [SerializeField]
     private bool isSprinting;
+    [SerializeField]
+    private Vector3 velocity;
+    public float Speed { get { return speed; } }
     public bool IsGrounded { get { return isGrounded; } }
     public bool IsSprinting { get { return isSprinting; } }
 
 
     //Private variables
     private Transform playerHead;
-    private CharacterController controller;
-    private Vector3 playerVelocity;
-    private Vector3 previousMove;
+    private CharacterController controller;    
+    public Vector3 playerVelocity { get; private set; }
+    private Vector3[] previousMoves;
 
     //Change trackers
     private ChangeTracker<bool> sprintTracker;  
@@ -63,6 +68,9 @@ public class PlayerMovement : MonoBehaviour
         //Initialize change trackers
         sprintTracker = new ChangeTracker<bool>(() => isSprinting);
 
+        //Initalize previous move array
+        previousMoves = new Vector3[8];
+
         //Assigning Events
         OnJump += () => Jump();
         OnLand += () => Land();
@@ -73,25 +81,27 @@ public class PlayerMovement : MonoBehaviour
     void Update()
     {
       
-        HandleGrounded();
-        ApplyGravity();
 
-     
+
+        CheckGrounded(8, controller.radius * 0.75f);
+           
         GetEvents();
-
        
         GetMovementInput();      
-        GetRotationInput();        
-    }
+        GetRotationInput();
+          
 
-    private void FixedUpdate()
-    {
-        HandleMovement();
+        ApplyGravity();
+
+        HandleGrounded();
+
 
         HandleRotation();
+        HandleMovement();
+
+   
+
     }
-
-
 
     private void GetEvents()
     {
@@ -113,32 +123,31 @@ public class PlayerMovement : MonoBehaviour
 
     private void GetMovementInput() 
     {
-        Vector3 playerXZVel = new Vector3(playerVelocity.x, 0f, playerVelocity.z);
+        float moveSpeed = isSprinting ? SprintSpeed : MoveSpeed;       
 
-        float speed = isSprinting ? SprintSpeed : MoveSpeed;
-
-        Vector2 inputs = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical")) * speed;
-
+        Vector2 inputs = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical")) * moveSpeed * Time.deltaTime;       
 
         Vector3 move = new Vector3(inputs.x, 0, inputs.y);
-        move = transform.TransformDirection(move) * Time.deltaTime;
+        move = transform.TransformDirection(move);
         if (isGrounded)
         {
-            playerVelocity.x += move.x;
-            playerVelocity.z += move.z;
-            previousMove = move;
+            playerVelocity += new Vector3(move.x, 0f, move.z);           
+            previousMoves = GameMath.Append<Vector3>(previousMoves, move);
         }
         else
         {
-            playerVelocity.x += previousMove.x;
-            playerVelocity.z += previousMove.z;
+            Vector3 _move = GameMath.AverageVector(previousMoves);
+            playerVelocity += new Vector3(_move.x, 0f, _move.z);
         }
     }
     private void HandleMovement() 
     {
         controller.Move(playerVelocity * Time.deltaTime);
-        playerVelocity.x = 0;
-        playerVelocity.z = 0;
+
+        velocity = playerVelocity;       
+        speed = (new Vector3(playerVelocity.x, 0f, playerVelocity.z) / Time.deltaTime).magnitude;
+
+        playerVelocity = new Vector3(0f, playerVelocity.y, 0f);      
     }
 
 
@@ -166,7 +175,8 @@ public class PlayerMovement : MonoBehaviour
     {
         if (playerVelocity.y <= 0f)
         {
-            playerVelocity.y = Mathf.Sqrt(jumpHeight * -3.0f * Physics.gravity.y);
+            float jumpImpulse = Mathf.Sqrt(jumpHeight * -3.0f * Physics.gravity.y);
+            playerVelocity += new Vector3(playerVelocity.x, jumpImpulse, playerVelocity.z);
         }
     }
     private void Land()
@@ -225,15 +235,15 @@ public class PlayerMovement : MonoBehaviour
     }
     private void HandleGrounded()
     {
-        CheckGrounded(8, controller.radius * 0.75f);
-
         if (isGrounded && playerVelocity.y < 0f)
         {
-            playerVelocity.y = -2.0f;
+            playerVelocity = new Vector3(playerVelocity.x, -2.0f, playerVelocity.z);
         }
     }
     private void ApplyGravity()
     {
         playerVelocity += Physics.gravity * Time.deltaTime;
     }
+
+    
 }
