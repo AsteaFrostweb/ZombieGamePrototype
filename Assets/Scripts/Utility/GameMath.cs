@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,30 @@ using UnityEngine.Animations;
 
 namespace Game.Utility
 {
+
+    public struct CircularBuffer<T>
+    {
+        public T[] buffer;
+        public int size;
+
+        public CircularBuffer(int _size)
+        {
+            buffer = new T[_size];
+            size = _size;
+        }
+        public void Append(T value)
+        {
+            if(size != buffer.Length) size = buffer.Length;
+            int finalIndex = size - 1;
+            for (int i = 0; i < finalIndex; i++)
+            {
+                buffer[i] = buffer[i + 1];
+            }
+            buffer[finalIndex] = value;            
+        }       
+
+    }
+
     class GameMath
     {
         public enum Axis {Forward, Backward,  Left, Right, Up, Down}
@@ -107,6 +132,18 @@ namespace Game.Utility
             }
             Vector3 total = new Vector3(x, y, z);
             return total / vecs.Length;  
+        }
+
+        public static float AbsoluteDifference(float a, float b) 
+        {
+            a = Mathf.Abs(a);
+            b = Mathf.Abs(b);
+            return Mathf.Abs(a - b);
+        }
+
+        public static Vector3 VecXZ(Vector3 vec) 
+        {
+            return new Vector3(vec.x, 0f, vec.z);
         }
 
     }

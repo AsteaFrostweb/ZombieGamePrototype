@@ -35,6 +35,10 @@ public class PlayerMovement : MonoBehaviour
     private bool isSprinting;
     [SerializeField]
     private Vector3 velocity;
+    [SerializeField]
+    private Vector3 nonGroundedMoveCache;
+    [SerializeField]
+    private Vector3[] pastVelocities;
     public float Speed { get { return speed; } }
     public bool IsGrounded { get { return isGrounded; } }
     public bool IsSprinting { get { return isSprinting; } }
@@ -44,10 +48,12 @@ public class PlayerMovement : MonoBehaviour
     private Transform playerHead;
     private CharacterController controller;    
     public Vector3 playerVelocity { get; private set; }
-    private Vector3[] previousMoves;
+    public CircularBuffer<Vector3> pastVelocityBuffer { get; private set; }
+    public int pastVelocityBufferSize { get; private set; } = 8;
 
     //Change trackers
-    private ChangeTracker<bool> sprintTracker;  
+    private ChangeTracker<bool> sprintTracker;
+    private ChangeTracker<bool> groundedTracker;
 
     //Events
     public event Action OnSprintStart;
@@ -67,9 +73,10 @@ public class PlayerMovement : MonoBehaviour
 
         //Initialize change trackers
         sprintTracker = new ChangeTracker<bool>(() => isSprinting);
+        groundedTracker = new ChangeTracker<bool>(() => isGrounded);
 
         //Initalize previous move array
-        previousMoves = new Vector3[8];
+        pastVelocityBuffer = new CircularBuffer<Vector3>(pastVelocityBufferSize);  
 
         //Assigning Events
         OnJump += () => Jump();
@@ -80,10 +87,10 @@ public class PlayerMovement : MonoBehaviour
 
     void Update()
     {
-      
+        pastVelocities = pastVelocityBuffer.buffer;
 
 
-        CheckGrounded(8, controller.radius * 0.75f);
+        CheckGrounded(8, controller.radius);
            
         GetEvents();
        
@@ -93,14 +100,20 @@ public class PlayerMovement : MonoBehaviour
 
         ApplyGravity();
 
-        HandleGrounded();
-
-
-        HandleRotation();
-        HandleMovement();
+      
 
    
 
+    }
+
+    private void FixedUpdate()
+    {
+        HandleGrounded();
+
+        HandleMovement();
+
+        HandleRotation();
+        
     }
 
     private void GetEvents()
@@ -125,27 +138,38 @@ public class PlayerMovement : MonoBehaviour
     {
         float moveSpeed = isSprinting ? SprintSpeed : MoveSpeed;       
 
-        Vector2 inputs = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical")) * moveSpeed * Time.deltaTime;       
+        Vector2 inputs = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical")).normalized * moveSpeed * Time.deltaTime;       
 
         Vector3 move = new Vector3(inputs.x, 0, inputs.y);
         move = transform.TransformDirection(move);
+        move = new Vector3(move.x, 0f, move.z);
         if (isGrounded)
         {
-            playerVelocity += new Vector3(move.x, 0f, move.z);           
-            previousMoves = GameMath.Append<Vector3>(previousMoves, move);
+            if (groundedTracker.Update())
+            {
+                Debug.Log("Player Landed on Ground");
+            }
+            playerVelocity += move;
+            pastVelocityBuffer.Append(move);
         }
         else
         {
-            Vector3 _move = GameMath.AverageVector(previousMoves);
-            playerVelocity += new Vector3(_move.x, 0f, _move.z);
+            if(groundedTracker.Update())
+            {
+                Debug.Log("Player Left Ground");
+                nonGroundedMoveCache = GameMath.AverageVector(pastVelocityBuffer.buffer);
+                playerVelocity += new Vector3(nonGroundedMoveCache.x, 0f, nonGroundedMoveCache.z);
+            }
+            
+            playerVelocity += new Vector3(nonGroundedMoveCache.x, 0f, nonGroundedMoveCache.z);
         }
     }
     private void HandleMovement() 
     {
-        controller.Move(playerVelocity * Time.deltaTime);
+        controller.Move(playerVelocity * Time.fixedDeltaTime);
 
         velocity = playerVelocity;       
-        speed = (new Vector3(playerVelocity.x, 0f, playerVelocity.z) / Time.deltaTime).magnitude;
+        speed = (new Vector3(playerVelocity.x, 0f, playerVelocity.z) / Time.fixedDeltaTime).magnitude;
 
         playerVelocity = new Vector3(0f, playerVelocity.y, 0f);      
     }
@@ -158,11 +182,11 @@ public class PlayerMovement : MonoBehaviour
     }
     private void HandleRotation() 
     {         
-        transform.Rotate(Vector3.up * mouseX * mouseSpeed.x * Time.deltaTime); //rotate player y by mouseX
+        transform.Rotate(Vector3.up * mouseX * mouseSpeed.x * Time.fixedDeltaTime); //rotate player y by mouseX
         mouseX = 0f;
         
         Vector3 currentRotation = playerHead.localEulerAngles;
-        currentRotation.x -= mouseY * mouseSpeed.y * Time.deltaTime;
+        currentRotation.x -= mouseY * mouseSpeed.y * Time.fixedDeltaTime;
         currentRotation.x = GameMath.ClampEulerAngle(currentRotation.x, -lookAnglecap, lookAnglecap);
         playerHead.localEulerAngles = currentRotation;
         mouseY = 0f;
