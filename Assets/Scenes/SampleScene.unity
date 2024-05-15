@@ -204,11 +204,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 634866d28844ff2488a47de6730bb154, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  differenceStep: 0.05
   smoothingX: 0
   smoothingZ: 0
-  averageVelocity: {x: 0, y: 0, z: 0}
-  averageLocalVelocity: {x: 0, y: 0, z: 0}
+  maxSpeed: 750
+  currentVelocity: {x: 0, y: 0, z: 0}
+  previousPosition: {x: 0, y: 0, z: 0}
 --- !u!1 &318036812
 GameObject:
   m_ObjectHideFlags: 0
@@ -2207,13 +2207,13 @@ CharacterController:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
+  m_Height: 1.75
+  m_Radius: 0.35
   m_SlopeLimit: 45
   m_StepOffset: 0.3
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Center: {x: 0, y: -0.12, z: 0}
 --- !u!1 &3135921508839094453
 GameObject:
   m_ObjectHideFlags: 0
@@ -2886,7 +2886,7 @@ MonoBehaviour:
   speed: 0
   isGrounded: 0
   canJump: 0
-  isSprinting: 0
+  isSprinting: 1
   velocity: {x: 0, y: 0, z: 0}
   nonGroundedMoveCache: {x: 0, y: 0, z: 0}
   pastVelocities: []

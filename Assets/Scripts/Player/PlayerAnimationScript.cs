@@ -19,8 +19,8 @@ public class PlayerAnimationScript : MonoBehaviour
     public float maxSpeed = 750f;
 
     [Header("Outputs")]
-    public Vector3 currentVelocity;
-    public Vector3 previousPosition;
+    public Vector3 currentLocalVelocity;
+    
 
 
 
@@ -47,19 +47,11 @@ public class PlayerAnimationScript : MonoBehaviour
 
     private void UpdateAnimatorVelocity() 
     {
-        currentVelocity = (playerMovement.transform.position - previousPosition) / Time.deltaTime;
+        Vector3[] velBuffer = playerMovement.pastVelocityBuffer.buffer;
 
-        playerModelAnimator.SetFloat("VelocityX", currentVelocity.x / maxSpeed);
-        playerModelAnimator.SetFloat("VelocityZ", currentVelocity.z / maxSpeed);
-
-        previousPosition = playerMovement.transform.position;
+        playerModelAnimator.SetFloat("VelocityX", velBuffer[velBuffer.Length - 1].x / maxSpeed);
+        playerModelAnimator.SetFloat("VelocityZ", velBuffer[velBuffer.Length - 1].z / maxSpeed);      
     }
 
-    private void UpdateAnimatorVelocityD()
-    {
-        
-
-      
-       
-    }
+ 
 }
