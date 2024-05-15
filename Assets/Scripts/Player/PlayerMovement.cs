@@ -4,6 +4,7 @@ using System;
 using System.Runtime.CompilerServices;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Animations;
 using UnityEngine.Experimental.AI;
 using UnityEngine.UIElements;
 
@@ -12,9 +13,11 @@ public class PlayerMovement : MonoBehaviour
 {
     //Inspector variables
     [Header("Movement")]
-    public float MoveSpeed = 2.5f;
-    public float SprintSpeed = 7.5f;
-    public float speedDampeningRate = 10f;
+    public float Acceleration = 100f;
+    public float MoveSpeed = 25f;
+    public float SprintSpeed = 75f;
+    [Range(1f,100f)]
+    public float Drag = 10f;
     public float jumpHeight = 2f;
     public float jumpBoxHeight = 0.2f;
 
@@ -46,8 +49,10 @@ public class PlayerMovement : MonoBehaviour
 
     //Private variables
     private Transform playerHead;
-    private CharacterController controller;    
+    private CharacterController controller;        
     public Vector3 playerVelocity { get; private set; }
+    public Vector3 playerLocalVelocity { get { return transform.TransformDirection(playerVelocity); } }
+    private DateTime previousJumpTime;
     public CircularBuffer<Vector3> pastVelocityBuffer { get; private set; }
     public int pastVelocityBufferSize { get; private set; } = 8;
 
@@ -99,7 +104,7 @@ public class PlayerMovement : MonoBehaviour
           
 
         ApplyGravity();
-
+        DampenVelocity();
       
 
    
@@ -135,43 +140,32 @@ public class PlayerMovement : MonoBehaviour
 
 
     private void GetMovementInput() 
-    {
-        float moveSpeed = isSprinting ? SprintSpeed : MoveSpeed;       
+    {      
 
-        Vector2 inputs = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical")).normalized * moveSpeed * Time.deltaTime;       
+        Vector2 inputs = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));      
+        if (inputs.x == 0 && inputs.y == 0) return;
 
-        Vector3 move = new Vector3(inputs.x, 0, inputs.y);
-        move = transform.TransformDirection(move);
-        move = new Vector3(move.x, 0f, move.z);
+
+        Vector3 move = new Vector3(inputs.x, 0, inputs.y) * Acceleration * Time.deltaTime; 
+        move = transform.TransformDirection(move);       
         if (isGrounded)
         {
             if (groundedTracker.Update())
             {
                 Debug.Log("Player Landed on Ground");
-            }
+            } //Runs first frame we are grounded
+
             playerVelocity += move;
-            pastVelocityBuffer.Append(move);
+            Clampvelocity();          
         }
-        else
-        {
-            if(groundedTracker.Update())
-            {
-                Debug.Log("Player Left Ground");
-                nonGroundedMoveCache = GameMath.AverageVector(pastVelocityBuffer.buffer);
-                playerVelocity += new Vector3(nonGroundedMoveCache.x, 0f, nonGroundedMoveCache.z);
-            }
-            
-            playerVelocity += new Vector3(nonGroundedMoveCache.x, 0f, nonGroundedMoveCache.z);
-        }
+        else if (groundedTracker.Update()) Debug.Log("Player Left Ground");     
     }
     private void HandleMovement() 
     {
         controller.Move(playerVelocity * Time.fixedDeltaTime);
 
-        velocity = playerVelocity;       
-        speed = (new Vector3(playerVelocity.x, 0f, playerVelocity.z) / Time.fixedDeltaTime).magnitude;
-
-        playerVelocity = new Vector3(0f, playerVelocity.y, 0f);      
+        velocity = playerVelocity;
+        speed = GameMath.VecXZ(playerVelocity).magnitude;
     }
 
 
@@ -199,6 +193,7 @@ public class PlayerMovement : MonoBehaviour
     {
         if (playerVelocity.y <= 0f)
         {
+            previousJumpTime = DateTime.Now;
             float jumpImpulse = Mathf.Sqrt(jumpHeight * -3.0f * Physics.gravity.y);
             playerVelocity += new Vector3(playerVelocity.x, jumpImpulse, playerVelocity.z);
         }
@@ -259,15 +254,54 @@ public class PlayerMovement : MonoBehaviour
     }
     private void HandleGrounded()
     {
-        if (isGrounded && playerVelocity.y < 0f)
+        float timeSinceJump = (float)DateTime.Now.Subtract(previousJumpTime).TotalSeconds;
+        if (isGrounded && (timeSinceJump > 0.15f))
         {
             playerVelocity = new Vector3(playerVelocity.x, -2.0f, playerVelocity.z);
         }
     }
     private void ApplyGravity()
     {
-        playerVelocity += Physics.gravity * Time.deltaTime;
+        if (!isGrounded)
+        {
+            playerVelocity += Physics.gravity * Time.deltaTime;
+        }
     }
 
-    
+    private void Clampvelocity() 
+    {              
+        Vector3 playerXZVel = GameMath.VecXZ(playerVelocity);
+        if (playerXZVel.magnitude > SprintSpeed) 
+        {
+            playerXZVel = playerXZVel.normalized * SprintSpeed;
+
+            playerVelocity = new Vector3(playerXZVel.x, playerVelocity.y, playerXZVel.z);
+        }
+        if (playerXZVel.magnitude > MoveSpeed && !isSprinting)
+        {
+            playerXZVel = playerXZVel.normalized * MoveSpeed;
+
+            playerVelocity = new Vector3(playerXZVel.x, playerVelocity.y, playerXZVel.z);
+        }
+    }
+    private void DampenVelocity() 
+    {
+        if (!isGrounded) return;
+
+        if (playerVelocity.magnitude <= 0.05f)
+        {
+            playerVelocity = new Vector3(0f, -2.0f, 0f);
+            return;
+        }
+        
+        Vector3 playerXZVel = GameMath.VecXZ(playerVelocity);
+        playerXZVel = playerXZVel.normalized * Drag * Time.deltaTime;
+        playerVelocity -= playerXZVel;
+
+        if (playerVelocity.magnitude <= playerXZVel.magnitude)
+        {
+            playerVelocity = new Vector3(0f, -2.0f, 0f);        
+        }
+    }
+
 }

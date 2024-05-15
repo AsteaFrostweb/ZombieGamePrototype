@@ -207,8 +207,7 @@ MonoBehaviour:
   smoothingX: 0
   smoothingZ: 0
   maxSpeed: 750
-  currentVelocity: {x: 0, y: 0, z: 0}
-  previousPosition: {x: 0, y: 0, z: 0}
+  currentLocalVelocity: {x: 0, y: 0, z: 0}
 --- !u!1 &318036812
 GameObject:
   m_ObjectHideFlags: 0
@@ -2875,10 +2874,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f54e139af3acd7e4ab448b88c3db1d0f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  MoveSpeed: 250
-  SprintSpeed: 750
-  speedDampeningRate: 150
-  jumpHeight: 1
+  Acceleration: 150
+  MoveSpeed: 3
+  SprintSpeed: 9
+  Drag: 15
+  jumpHeight: 2
   jumpBoxHeight: 0.2
   vert_presseed: 0
   mouseSpeed: {x: 150, y: 150}

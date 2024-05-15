@@ -140,6 +140,10 @@ namespace Game.Utility
             b = Mathf.Abs(b);
             return Mathf.Abs(a - b);
         }
+        public static Vector3 AbsVec(Vector3 vec) 
+        {
+            return new Vector3(Mathf.Abs(vec.x), Mathf.Abs(vec.x), Mathf.Abs(vec.x));
+        }
 
         public static Vector3 VecXZ(Vector3 vec) 
         {
