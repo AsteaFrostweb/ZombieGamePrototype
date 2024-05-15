@@ -47,10 +47,10 @@ public class PlayerAnimationScript : MonoBehaviour
 
     private void UpdateAnimatorVelocity() 
     {
-        Vector3[] velBuffer = playerMovement.pastVelocityBuffer.buffer;
 
-        playerModelAnimator.SetFloat("VelocityX", velBuffer[velBuffer.Length - 1].x / maxSpeed);
-        playerModelAnimator.SetFloat("VelocityZ", velBuffer[velBuffer.Length - 1].z / maxSpeed);      
+        currentLocalVelocity = playerMovement.playerLocalVelocity;
+        playerModelAnimator.SetFloat("VelocityX", playerMovement.playerLocalVelocity.x / maxSpeed);
+        playerModelAnimator.SetFloat("VelocityZ", playerMovement.playerLocalVelocity.z / maxSpeed);      
     }
 
  

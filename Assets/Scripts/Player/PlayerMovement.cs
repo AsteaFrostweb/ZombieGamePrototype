@@ -51,7 +51,7 @@ public class PlayerMovement : MonoBehaviour
     private Transform playerHead;
     private CharacterController controller;        
     public Vector3 playerVelocity { get; private set; }
-    public Vector3 playerLocalVelocity { get { return transform.TransformDirection(playerVelocity); } }
+    public Vector3 playerLocalVelocity { get { return transform.InverseTransformDirection(playerVelocity); } }
     private DateTime previousJumpTime;
     public CircularBuffer<Vector3> pastVelocityBuffer { get; private set; }
     public int pastVelocityBufferSize { get; private set; } = 8;
