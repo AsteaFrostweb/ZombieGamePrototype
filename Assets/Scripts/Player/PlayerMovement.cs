@@ -24,6 +24,7 @@ public class PlayerMovement : MonoBehaviour
     public float vert_presseed = 0f;
 
     [Header("View")]
+    public CameraTweener CamTween;
     public Vector2 mouseSpeed = Vector2.one;
     public float lookAnglecap = 75f;
 
@@ -37,6 +38,8 @@ public class PlayerMovement : MonoBehaviour
     [SerializeField]
     private bool isSprinting;
     [SerializeField]
+    private bool isADS;
+    [SerializeField]
     private Vector3 velocity;
     [SerializeField]
     private Vector3 nonGroundedMoveCache;
@@ -45,6 +48,7 @@ public class PlayerMovement : MonoBehaviour
     public float Speed { get { return speed; } }
     public bool IsGrounded { get { return isGrounded; } }
     public bool IsSprinting { get { return isSprinting; } }
+    public bool IsADS { get { return isADS;  } }
 
 
     //Private variables
@@ -59,6 +63,7 @@ public class PlayerMovement : MonoBehaviour
     //Change trackers
     private ChangeTracker<bool> sprintTracker;
     private ChangeTracker<bool> groundedTracker;
+    private ChangeTracker<bool> adsTracker;
 
     //Events
     public event Action OnSprintStart;
@@ -79,6 +84,7 @@ public class PlayerMovement : MonoBehaviour
         //Initialize change trackers
         sprintTracker = new ChangeTracker<bool>(() => isSprinting);
         groundedTracker = new ChangeTracker<bool>(() => isGrounded);
+        adsTracker = new ChangeTracker<bool>(() => isADS);
 
         //Initalize previous move array
         pastVelocityBuffer = new CircularBuffer<Vector3>(pastVelocityBufferSize);  
@@ -104,15 +110,14 @@ public class PlayerMovement : MonoBehaviour
           
 
         ApplyGravity();
-        DampenVelocity();
-      
 
-   
-
+        DampenVelocity(Time.deltaTime);
     }
 
     private void FixedUpdate()
     {
+       
+
         HandleGrounded();
 
         HandleMovement();
@@ -124,6 +129,14 @@ public class PlayerMovement : MonoBehaviour
     private void GetEvents()
     {
         isSprinting = Input.GetButton("Sprint");
+
+        if (Input.GetButtonDown("Fire2")) 
+        {
+            isADS = !isADS;
+            if (isADS) ToggleAim(true);
+            else ToggleAim(false);
+            
+        }
 
         if (Input.GetButtonDown("Jump") && canJump)
         {
@@ -144,6 +157,10 @@ public class PlayerMovement : MonoBehaviour
 
         Vector2 inputs = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));      
         if (inputs.x == 0 && inputs.y == 0) return;
+        if (inputs.magnitude > 1) 
+        {
+            inputs = inputs.normalized;
+        }
 
 
         Vector3 move = new Vector3(inputs.x, 0, inputs.y) * Acceleration * Time.deltaTime; 
@@ -284,18 +301,18 @@ public class PlayerMovement : MonoBehaviour
             playerVelocity = new Vector3(playerXZVel.x, playerVelocity.y, playerXZVel.z);
         }
     }
-    private void DampenVelocity() 
+    private void DampenVelocity(float time) 
     {
         if (!isGrounded) return;
 
-        if (playerVelocity.magnitude <= 0.05f)
+        Vector3 playerXZVel = GameMath.VecXZ(playerVelocity);
+        if (playerXZVel.magnitude <= 0.05f)
         {
             playerVelocity = new Vector3(0f, -2.0f, 0f);
             return;
-        }
-        
-        Vector3 playerXZVel = GameMath.VecXZ(playerVelocity);
-        playerXZVel = playerXZVel.normalized * Drag * Time.deltaTime;
+        }        
+       
+        playerXZVel = playerXZVel.normalized * Drag * time;
         playerVelocity -= playerXZVel;
 
         if (playerVelocity.magnitude <= playerXZVel.magnitude)
@@ -304,4 +321,21 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
+
+    private void ToggleAim() 
+    {
+        isADS = !isADS;
+        ToggleAim(isADS);
+    }
+    private void ToggleAim(bool _bool) 
+    {
+        if (!CamTween) 
+        {
+            Debugging.Log("Unable to toggle aim as CameraTweener is not assigned");
+            return;
+        }
+
+        if (_bool) CamTween.SetTrackedTransform("ADS");
+        else CamTween.SetTrackedTransform("3rd Person");
+    }
 }
