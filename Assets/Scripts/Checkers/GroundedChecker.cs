@@ -1,3 +1,5 @@
+using Assets.Scripts.Utility;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -19,10 +21,27 @@ public class GroundedChecker : MonoBehaviour
     public bool IsGrounded { get { return isGrounded; } }  
     public bool CanJump { get { return canJump; } }
 
+    private ChangeTracker<bool> groundedTracker;
+
+    public event Action OnLeaveGround;
+    public event Action OnLand;
+
+
+
+    private void Start()
+    {
+        groundedTracker = new ChangeTracker<bool>(() => IsGrounded);
+    }
     // Update is called once per frame
     void Update()
     {
         CheckGrounded();
+
+        if (groundedTracker.Update()) 
+        {
+            if (IsGrounded) OnLand?.Invoke();
+            else OnLeaveGround?.Invoke();
+        }
     }   
 
     private void CheckGrounded()

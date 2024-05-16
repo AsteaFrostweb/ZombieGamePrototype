@@ -12,41 +12,41 @@ using UnityEngine.UIElements;
 public class PlayerMovement : MonoBehaviour
 {
     //Inspector variables
+ 
+ 
     [Header("Movement")]
-    public float Acceleration = 100f;
+    [SerializeField]
+    private float Acceleration = 100f;
     public float MoveSpeed = 25f;
     public float SprintSpeed = 75f;
     [Range(1f,100f)]
-    public float Drag = 10f;
-    public float jumpHeight = 2f;
-    public float jumpBoxHeight = 0.2f;
-
-    public float vert_presseed = 0f;
+    [SerializeField]
+    private float Drag = 10f;
+    [SerializeField]
+    private float jumpHeight = 2f;
+    [SerializeField]
+    private float jumpBoxHeight = 0.2f;
+      
 
     [Header("View")]
-    public CameraTweener CamTween;
-    public Vector2 mouseSpeed = Vector2.one;
-    public float lookAnglecap = 75f;
+    [SerializeField]
+    private CameraTweener CamTween;
+    [SerializeField]
+    private Vector2 mouseSpeed = Vector2.one;
+    [SerializeField]
+    private float lookAnglecap = 75f;
 
     [Header("Outputs")]
     [SerializeField]
     private float speed;
-    [SerializeField]
-    private bool isGrounded;
-    [SerializeField]
-    private bool canJump;
     [SerializeField]
     private bool isSprinting;
     [SerializeField]
     private bool isADS;
     [SerializeField]
     private Vector3 velocity;
-    [SerializeField]
-    private Vector3 nonGroundedMoveCache;
-    [SerializeField]
-    private Vector3[] pastVelocities;
-    public float Speed { get { return speed; } }
-    public bool IsGrounded { get { return isGrounded; } }
+
+    public float Speed { get { return speed; } }   
     public bool IsSprinting { get { return isSprinting; } }
     public bool IsADS { get { return isADS;  } }
 
@@ -57,12 +57,10 @@ public class PlayerMovement : MonoBehaviour
     public Vector3 playerVelocity { get; private set; }
     public Vector3 playerLocalVelocity { get { return transform.InverseTransformDirection(playerVelocity); } }
     private DateTime previousJumpTime;
-    public CircularBuffer<Vector3> pastVelocityBuffer { get; private set; }
-    public int pastVelocityBufferSize { get; private set; } = 8;
+    private GroundedChecker GroundChecker;
 
     //Change trackers
-    private ChangeTracker<bool> sprintTracker;
-    private ChangeTracker<bool> groundedTracker;
+    private ChangeTracker<bool> sprintTracker;  
     private ChangeTracker<bool> adsTracker;
 
     //Events
@@ -78,31 +76,30 @@ public class PlayerMovement : MonoBehaviour
     private void Start()
     {
         //Find objects
+
         playerHead = transform.Find("HeadContainer");
         controller = GetComponent<CharacterController>();
+        GroundChecker = GetComponent<GroundedChecker>();
 
         //Initialize change trackers
-        sprintTracker = new ChangeTracker<bool>(() => isSprinting);
-        groundedTracker = new ChangeTracker<bool>(() => isGrounded);
+        sprintTracker = new ChangeTracker<bool>(() => isSprinting);        
         adsTracker = new ChangeTracker<bool>(() => isADS);
 
-        //Initalize previous move array
-        pastVelocityBuffer = new CircularBuffer<Vector3>(pastVelocityBufferSize);  
+       
 
         //Assigning Events
         OnJump += () => Jump();
         OnLand += () => Land();
+        GroundChecker.OnLeaveGround += () => OnLeaveGround();
+        GroundChecker.OnLand += () => this.OnLand.Invoke();
+       
+
     }
 
 
 
     void Update()
-    {
-        pastVelocities = pastVelocityBuffer.buffer;
-
-
-        CheckGrounded(8, controller.radius);
-           
+    {                       
         GetEvents();
        
         GetMovementInput();      
@@ -138,7 +135,7 @@ public class PlayerMovement : MonoBehaviour
             
         }
 
-        if (Input.GetButtonDown("Jump") && canJump)
+        if (Input.GetButtonDown("Jump") && GroundChecker.CanJump)
         {
             OnJump.Invoke();
         }
@@ -165,17 +162,12 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 move = new Vector3(inputs.x, 0, inputs.y) * Acceleration * Time.deltaTime; 
         move = transform.TransformDirection(move);       
-        if (isGrounded)
-        {
-            if (groundedTracker.Update())
-            {
-                Debug.Log("Player Landed on Ground");
-            } //Runs first frame we are grounded
-
+        if (GroundChecker.IsGrounded)
+        {           
             playerVelocity += move;
             Clampvelocity();          
         }
-        else if (groundedTracker.Update()) Debug.Log("Player Left Ground");     
+            
     }
     private void HandleMovement() 
     {
@@ -219,67 +211,27 @@ public class PlayerMovement : MonoBehaviour
     {
         //play sound fx if was moving certan speed before collision
         //handle fall damage maybe
+        Debugging.Log("Player landed");
     }
 
-
-
-
-    private void CheckGrounded(int numPoints, float radius)
+    private void OnLeaveGround() 
     {
-      
-        Vector3 origin = transform.position;
-
-       
-        float angleStep = 360f / numPoints;
-
-        int castHits = 0;
-      
-        for (int i = 0; i < numPoints; i++)
-        {
-            // Calculate the angle for this ray
-            float angle = i * angleStep * Mathf.Deg2Rad;
-
-            // Calculate the position of the raycast origin in the circle
-            Vector3 circlePosition = origin + new Vector3(Mathf.Cos(angle) * radius, -controller.height/4, Mathf.Sin(angle) * radius);
-
-            float height = jumpBoxHeight + (controller.height / 4);
-
-            // Perform the raycast
-            RaycastHit hit;
-            if (Physics.Raycast(circlePosition, Vector3.down, out hit, height))
-            {
-                // If the raycast hits something, draw a green ray
-                Debug.DrawRay(circlePosition, Vector3.down * hit.distance, Color.green);
-                castHits++;
-            }
-            else
-            {
-                // If the raycast doesn't hit anything, draw a red ray
-                Debug.DrawRay(circlePosition, Vector3.down * height, Color.red);
-            }
-        }
-
-        if (castHits >= (int)(numPoints * 0.4f))
-        {
-            canJump = true;
-        } else canJump = false;
-
-        if (castHits >= 1)
-        {
-            isGrounded = true;
-        } else isGrounded = false;            
+        Debugging.Log("Player left ground");
     }
+
+
+   
     private void HandleGrounded()
     {
         float timeSinceJump = (float)DateTime.Now.Subtract(previousJumpTime).TotalSeconds;
-        if (isGrounded && (timeSinceJump > 0.15f))
+        if (GroundChecker.IsGrounded && (timeSinceJump > 0.15f))
         {
             playerVelocity = new Vector3(playerVelocity.x, -2.0f, playerVelocity.z);
         }
     }
     private void ApplyGravity()
     {
-        if (!isGrounded)
+        if (!GroundChecker.IsGrounded)
         {
             playerVelocity += Physics.gravity * Time.deltaTime;
         }
@@ -303,7 +255,7 @@ public class PlayerMovement : MonoBehaviour
     }
     private void DampenVelocity(float time) 
     {
-        if (!isGrounded) return;
+        if (!GroundChecker.IsGrounded) return;
 
         Vector3 playerXZVel = GameMath.VecXZ(playerVelocity);
         if (playerXZVel.magnitude <= 0.05f)
