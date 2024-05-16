@@ -137,7 +137,8 @@ public class PlayerMovement : MonoBehaviour
 
         if (Input.GetButtonDown("Jump") && GroundChecker.CanJump)
         {
-            OnJump.Invoke();
+            float timeSinceJump = (float)DateTime.Now.Subtract(previousJumpTime).TotalSeconds;
+            if (timeSinceJump >= 0.15f) OnJump.Invoke(); 
         }
 
         if (sprintTracker.Update()) //returns true if the "isSprinting" value is different than last frame
@@ -260,7 +261,7 @@ public class PlayerMovement : MonoBehaviour
         Vector3 playerXZVel = GameMath.VecXZ(playerVelocity);
         if (playerXZVel.magnitude <= 0.05f)
         {
-            playerVelocity = new Vector3(0f, -2.0f, 0f);
+            playerVelocity = new Vector3(0f, playerVelocity.y, 0f);
             return;
         }        
        
@@ -269,7 +270,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (playerVelocity.magnitude <= playerXZVel.magnitude)
         {
-            playerVelocity = new Vector3(0f, -2.0f, 0f);        
+            playerVelocity = new Vector3(0f, playerVelocity.y, 0f);        
         }
     }
 
