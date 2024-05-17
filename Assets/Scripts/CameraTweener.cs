@@ -26,6 +26,9 @@ public class CameraTweener : MonoBehaviour
     [SerializeField]
     [Range(0.001f, 100f)]
     public float RotationSpeed;
+    [SerializeField]
+    private float clippingOffset = 0.05f;
+ 
 
     [Header("Outputs")]
     [SerializeField]
@@ -33,7 +36,13 @@ public class CameraTweener : MonoBehaviour
     [SerializeField]
     private bool RotationAligned;
     [SerializeField]
+    private bool isClipping;
+    [SerializeField]
     private CameraPosition TrackedPosition;
+
+
+    private Vector3 tracked_pos;
+  
   
     // Start is called before the first frame update
     void Start()
@@ -51,31 +60,64 @@ public class CameraTweener : MonoBehaviour
     {
         if (TrackedPosition.transform == null) return;
         if (MainCamera == null) return;
+    
 
-        PositionAligned = false;
-        RotationAligned = false;
 
-        float distance = (MainCamera.transform.position - TrackedPosition.transform.position).magnitude;       
+        RaycastHit rayHit = new RaycastHit();
 
-        if (distance < 0.05f)
-        {
-           MainCamera.transform.position = TrackedPosition.transform.position;
-            PositionAligned = true;
+        Vector3 toPos = (TrackedPosition.transform.position - transform.position);
+        Vector3 dir = toPos.normalized;
+        float len = toPos.magnitude;
+
+        if (Physics.Raycast(transform.position, dir, out rayHit, len +  clippingOffset))
+        {            
+            //Debug.DrawRay(transform.position, rayHit.point, Color.green);
+            isClipping = true;
         }
-        if (Vector3.Angle(MainCamera.transform.rotation.eulerAngles.normalized, TrackedPosition.transform.rotation.eulerAngles.normalized) < 0.1f)
+        else 
         {
-           MainCamera.transform.rotation = TrackedPosition.transform.rotation;
-            RotationAligned = true;
+            isClipping = false;
+            //Debug.DrawRay(transform.position, rayHit.point, Color.red);
         }
+
+        if (isClipping)
+        {
+            tracked_pos = rayHit.point - (dir * clippingOffset);
+        }
+        else tracked_pos = TrackedPosition.transform.position;
+
+
+        CheckAllignment();
 
         if (!PositionAligned)
         {
-           MainCamera.transform.position = Vector3.MoveTowards(MainCamera.transform.position, TrackedPosition.transform.position, MoveSpeed * Time.deltaTime);
+            float lerp_factor = isClipping ? 1.0f : MoveSpeed * Time.deltaTime;
+            lerp_factor = (rayHit.distance > Vector3.Distance(transform.position, MainCamera.transform.position)) ? MoveSpeed * Time.deltaTime : lerp_factor;
+           MainCamera.transform.position = Vector3.MoveTowards(MainCamera.transform.position, tracked_pos, lerp_factor);
         }
 
         if (!RotationAligned) 
         {
            MainCamera.transform.rotation = Quaternion.RotateTowards(MainCamera.transform.rotation, TrackedPosition.transform.rotation, RotationSpeed);
+        }
+
+    }
+
+    private void CheckAllignment() 
+    {
+        PositionAligned = false;
+        RotationAligned = false;
+
+        float distance = (MainCamera.transform.position - tracked_pos).magnitude;
+        if (distance < 0.05f)
+        {
+            MainCamera.transform.position = tracked_pos;
+            PositionAligned = true;
+        }
+        if (Vector3.Angle(MainCamera.transform.rotation.eulerAngles.normalized, TrackedPosition.transform.rotation.eulerAngles.normalized) < 0.1f)
+        {
+            MainCamera.transform.rotation = TrackedPosition.transform.rotation;
+            RotationAligned = true;
         }
 
     }

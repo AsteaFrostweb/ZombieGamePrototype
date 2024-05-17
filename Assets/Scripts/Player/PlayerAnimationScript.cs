@@ -11,11 +11,10 @@ public class PlayerAnimationScript : MonoBehaviour
     private Animator playerModelAnimator;
     private Game.Utility.CircularBuffer<Vector3> playerPositionBuffer;
 
-    [Header("inputs")] 
-    [Range(0f, 1f)]
-    public float smoothingX;
-    [Range(0f, 1f)]
-    public float smoothingZ;
+    [Header("inputs")]
+    [Range(1f, 100f)]
+    public float smoothing;
+  
     public float maxSpeed = 750f;
 
     [Header("Outputs")]
@@ -47,10 +46,19 @@ public class PlayerAnimationScript : MonoBehaviour
 
     private void UpdateAnimatorVelocity() 
     {
+        Vector3 local_vel = playerMovement.playerLocalVelocity;
 
-        currentLocalVelocity = playerMovement.playerLocalVelocity;
-        playerModelAnimator.SetFloat("VelocityX", playerMovement.playerLocalVelocity.x / maxSpeed);
-        playerModelAnimator.SetFloat("VelocityZ", playerMovement.playerLocalVelocity.z / maxSpeed);      
+        float current_x, current_z;
+        current_x = playerModelAnimator.GetFloat("VelocityX");
+        current_z = playerModelAnimator.GetFloat("VelocityZ");
+
+        float desired_x, desired_z;
+        desired_x = local_vel.x / maxSpeed;
+        desired_z = local_vel.z / maxSpeed;
+        
+        
+        playerModelAnimator.SetFloat("VelocityX", Mathf.Lerp(current_x, desired_x, (1 / smoothing)));
+        playerModelAnimator.SetFloat("VelocityZ", Mathf.Lerp(current_z, desired_z, (1 / smoothing)));      
     }
 
  
