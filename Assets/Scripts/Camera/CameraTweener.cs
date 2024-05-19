@@ -28,6 +28,8 @@ public class CameraTweener : MonoBehaviour
     public float RotationSpeed;
     [SerializeField]
     private float clippingOffset = 0.05f;
+    [SerializeField]
+    private LayerMask Layer_Mask;
  
 
     [Header("Outputs")]
@@ -56,7 +58,7 @@ public class CameraTweener : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
         if (TrackedPosition.transform == null) return;
         if (MainCamera == null) return;
@@ -69,7 +71,7 @@ public class CameraTweener : MonoBehaviour
         Vector3 dir = toPos.normalized;
         float len = toPos.magnitude;
 
-        if (Physics.Raycast(transform.position, dir, out rayHit, len +  clippingOffset))
+        if (Physics.Raycast(transform.position, dir, out rayHit, len +  clippingOffset, Layer_Mask))
         {            
             //Debug.DrawRay(transform.position, rayHit.point, Color.green);
             isClipping = true;

@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Animations;
+using UnityEngine.Animations.Rigging;
 using UnityEngine.Experimental.AI;
 using UnityEngine.UIElements;
 
@@ -26,9 +27,10 @@ public class PlayerMovement : MonoBehaviour
     private float jumpHeight = 2f;
     [SerializeField]
     private float jumpBoxHeight = 0.2f;
-      
+
 
     [Header("View")]
+
     [SerializeField]
     private CameraTweener CamTween;
     [SerializeField]
@@ -99,7 +101,10 @@ public class PlayerMovement : MonoBehaviour
 
 
     void Update()
-    {                       
+    {             
+        UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+        UnityEngine.Cursor.visible = false;
+
         GetEvents();
        
         GetMovementInput();      
